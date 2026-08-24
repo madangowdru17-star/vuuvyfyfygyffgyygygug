@@ -268,8 +268,8 @@ def get_config():
 def toggle_button(button_type, button_id):
     try:
         data = request.json
-        enabled = data.get('enabled', False)
-        maintenance = data.get('maintenance', False)
+        enabled = data.get('enabled')
+        maintenance = data.get('maintenance')
         
         config = load_config()
         
@@ -282,22 +282,33 @@ def toggle_button(button_type, button_id):
         else:
             return jsonify({"success": False, "message": "Invalid button type"}), 400
         
+        updated = False
         for button in buttons:
             if button.get('id') == button_id:
-                button['enabled'] = enabled
-                button['maintenance'] = maintenance
-                
-                if button_type == 'freefire':
-                    config['freefire_buttons'] = buttons
-                elif button_type == 'freefire_max':
-                    config['freefire_max_buttons'] = buttons
-                elif button_type == 'root_libs':
-                    config['root_libs'] = buttons
-                
-                save_config(config)
-                return jsonify({"success": True, "message": "Button toggled successfully", "enabled": enabled, "maintenance": maintenance})
+                if enabled is not None:
+                    button['enabled'] = enabled
+                if maintenance is not None:
+                    button['maintenance'] = maintenance
+                updated = True
+                break
         
-        return jsonify({"success": False, "message": "Button not found"}), 404
+        if not updated:
+            return jsonify({"success": False, "message": "Button not found"}), 404
+        
+        if button_type == 'freefire':
+            config['freefire_buttons'] = buttons
+        elif button_type == 'freefire_max':
+            config['freefire_max_buttons'] = buttons
+        elif button_type == 'root_libs':
+            config['root_libs'] = buttons
+        
+        save_config(config)
+        return jsonify({
+            "success": True, 
+            "message": "Button toggled successfully", 
+            "enabled": enabled, 
+            "maintenance": maintenance
+        })
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
@@ -317,24 +328,28 @@ def update_button(button_type, button_id):
         else:
             return jsonify({"success": False, "message": "Invalid button type"}), 400
         
+        updated = False
         for button in buttons:
             if button.get('id') == button_id:
                 if 'url' in data:
                     button['url'] = data['url']
                 if 'name' in data:
                     button['name'] = data['name']
-                
-                if button_type == 'freefire':
-                    config['freefire_buttons'] = buttons
-                elif button_type == 'freefire_max':
-                    config['freefire_max_buttons'] = buttons
-                elif button_type == 'root_libs':
-                    config['root_libs'] = buttons
-                
-                save_config(config)
-                return jsonify({"success": True, "message": "Button updated successfully"})
+                updated = True
+                break
         
-        return jsonify({"success": False, "message": "Button not found"}), 404
+        if not updated:
+            return jsonify({"success": False, "message": "Button not found"}), 404
+        
+        if button_type == 'freefire':
+            config['freefire_buttons'] = buttons
+        elif button_type == 'freefire_max':
+            config['freefire_max_buttons'] = buttons
+        elif button_type == 'root_libs':
+            config['root_libs'] = buttons
+        
+        save_config(config)
+        return jsonify({"success": True, "message": "Button updated successfully"})
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
@@ -387,17 +402,19 @@ def update_asset():
         assets = config.get('assets', [])
         
         if 'name' in data and 'url' in data:
+            updated = False
             for asset in assets:
                 if asset.get('name') == data['name']:
                     asset['url'] = data['url']
-                    config['assets'] = assets
-                    save_config(config)
-                    return jsonify({"success": True, "message": "Asset updated"})
+                    updated = True
+                    break
             
-            assets.append({"name": data['name'], "url": data['url']})
+            if not updated:
+                assets.append({"name": data['name'], "url": data['url']})
+            
             config['assets'] = assets
             save_config(config)
-            return jsonify({"success": True, "message": "Asset added"})
+            return jsonify({"success": True, "message": "Asset updated"})
         
         return jsonify({"success": False, "message": "Missing name or url"}), 400
     except Exception as e:
@@ -556,7 +573,7 @@ DASHBOARD_TEMPLATE = '''
         .badge-info{background:#bee3f8;color:#2a4365}
         
         .control-group{display:flex;gap:0.5rem;flex-wrap:wrap}
-        .btn{padding:0.3rem 0.7rem;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.2s}
+        .btn{padding:0.35rem 0.8rem;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.2s}
         .btn:hover{transform:scale(1.05);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
         .btn-enable{background:#48bb78;color:white}
         .btn-enable:hover{background:#38a169}
@@ -839,6 +856,7 @@ DASHBOARD_TEMPLATE = '''
     <div class="toast" id="toast"></div>
 
     <script>
+        // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -856,6 +874,7 @@ DASHBOARD_TEMPLATE = '''
             setTimeout(() => { toast.style.display = 'none'; }, 3000);
         }
 
+        // Toggle Button Enable/Disable
         async function toggleButton(type, id, enabled, maintenance) {
             try {
                 const response = await fetch(`/api/button/toggle/${type}/${id}`, {
@@ -875,6 +894,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Toggle Maintenance Mode for Button
         async function toggleMaintenanceButton(type, id, maintenance, enabled) {
             try {
                 const response = await fetch(`/api/button/toggle/${type}/${id}`, {
@@ -894,6 +914,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Toggle Global Maintenance
         async function toggleMaintenance(type, current) {
             try {
                 const response = await fetch('/api/maintenance/toggle', {
@@ -913,6 +934,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Toggle Update Availability
         async function toggleUpdate() {
             try {
                 const current = {{ config.update_available|lower }};
@@ -933,6 +955,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Save Update Info
         async function saveUpdateInfo() {
             const version = document.getElementById('update_version').value;
             const url = document.getElementById('update_url').value;
@@ -960,6 +983,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Update Master Key
         async function updateMasterKey() {
             const master_key = document.getElementById('master_key').value;
             const master_key_expiry = document.getElementById('master_key_expiry').value;
@@ -985,6 +1009,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Update Asset
         async function updateAsset() {
             const name = document.getElementById('asset_name').value;
             const url = document.getElementById('asset_url').value;
@@ -1012,6 +1037,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Open Edit Modal
         function openEditModal(type, id, name, url) {
             document.getElementById('edit_type').value = type;
             document.getElementById('edit_id').value = id;
@@ -1020,10 +1046,12 @@ DASHBOARD_TEMPLATE = '''
             document.getElementById('editModal').style.display = 'flex';
         }
 
+        // Close Edit Modal
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
         }
 
+        // Save Edit
         async function saveEdit() {
             const type = document.getElementById('edit_type').value;
             const id = document.getElementById('edit_id').value;
@@ -1049,6 +1077,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Refresh Config
         async function refreshConfig() {
             try {
                 const response = await fetch('/api/config');
@@ -1060,8 +1089,10 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
+        // Auto-refresh every 30 seconds
         setInterval(refreshConfig, 30000);
 
+        // Close modal on outside click
         window.onclick = function(event) {
             const modal = document.getElementById('editModal');
             if (event.target == modal) {
