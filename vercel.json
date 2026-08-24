@@ -13,6 +13,6 @@
     }
   ],
   "env": {
-    "SECRET_KEY": "your-secure-secret-key-here"
+    "SECRET_KEY": "your-super-secret-key-change-this-in-production"
   }
 }
