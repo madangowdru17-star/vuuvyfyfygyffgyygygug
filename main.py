@@ -1,5 +1,4 @@
-# main.py
-from flask import Flask, request, jsonify, render_template, session, redirect, url_for
+from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
 from flask_cors import CORS
 import json
 import os
@@ -12,11 +11,9 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 CORS(app)
 
-# Configuration file path
 CONFIG_FILE = 'config.json'
 ADMIN_CREDENTIALS_FILE = 'admin_credentials.json'
 
-# Default configuration
 DEFAULT_CONFIG = {
     "maintenance": False,
     "freefire_maintenance": False,
@@ -190,7 +187,6 @@ DEFAULT_CONFIG = {
     ]
 }
 
-# Admin credentials management
 def load_admin_credentials():
     if os.path.exists(ADMIN_CREDENTIALS_FILE):
         with open(ADMIN_CREDENTIALS_FILE, 'r') as f:
@@ -247,7 +243,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# API Routes
 @app.route('/api/config', methods=['GET'])
 def get_config():
     config = load_config()
@@ -259,11 +254,9 @@ def update_config():
     try:
         data = request.json
         config = load_config()
-        
         for key, value in data.items():
             if key in config:
                 config[key] = value
-        
         save_config(config)
         return jsonify({"success": True, "message": "Configuration updated successfully"})
     except Exception as e:
@@ -411,7 +404,6 @@ def update_app_info():
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
-# Web Routes
 @app.route('/')
 def index():
     return redirect(url_for('login'))
@@ -435,7 +427,8 @@ def login():
 @login_required
 def dashboard():
     config = load_config()
-    return render_template_string(DASHBOARD_TEMPLATE, config=config, session=session)
+    username = session.get('username', 'Admin')
+    return render_template_string(DASHBOARD_TEMPLATE, config=config, username=username)
 
 @app.route('/logout')
 def logout():
@@ -448,7 +441,6 @@ def init_admin():
         create_admin('admin', 'admin123')
         print("Default admin created: username='admin', password='admin123'")
 
-# Templates
 LOGIN_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
@@ -885,19 +877,6 @@ DASHBOARD_TEMPLATE = '''
                 justify-content: space-between;
             }
         }
-        .animation-pulse {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
-        .section-divider {
-            border: none;
-            border-top: 2px solid #edf2f7;
-            margin: 1.5rem 0;
-        }
     </style>
 </head>
 <body>
@@ -905,7 +884,7 @@ DASHBOARD_TEMPLATE = '''
         <div class="header">
             <h1>Administration Dashboard</h1>
             <div class="header-user">
-                <span>Welcome, {{ session.username }}</span>
+                <span>Welcome, {{ username }}</span>
                 <a href="/logout" class="logout-btn">Sign Out</a>
             </div>
         </div>
