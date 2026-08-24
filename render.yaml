@@ -2,7 +2,6 @@ services:
   - type: web
     name: hex-proxy-api
     runtime: python
-    repo: https://github.com/yourusername/hex-proxy-api
     plan: free
     region: oregon
     buildCommand: pip install -r requirements.txt
@@ -12,3 +11,7 @@ services:
         generateValue: true
       - key: PYTHON_VERSION
         value: 3.10.0
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1

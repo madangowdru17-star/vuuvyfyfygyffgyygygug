@@ -12,9 +12,13 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 CORS(app)
 
-# File paths for persistent storage on Render
-CONFIG_FILE = 'config.json'
-ADMIN_CREDENTIALS_FILE = 'admin_credentials.json'
+# Use Render disk storage for persistent data
+DATA_DIR = '/data' if os.path.exists('/data') else os.getcwd()
+CONFIG_FILE = os.path.join(DATA_DIR, 'config.json')
+ADMIN_CREDENTIALS_FILE = os.path.join(DATA_DIR, 'admin_credentials.json')
+
+# Ensure data directory exists
+os.makedirs(DATA_DIR, exist_ok=True)
 
 # Default configuration
 DEFAULT_CONFIG = {
@@ -191,7 +195,6 @@ DEFAULT_CONFIG = {
 }
 
 def load_admin_credentials():
-    """Load admin credentials from file"""
     if os.path.exists(ADMIN_CREDENTIALS_FILE):
         try:
             with open(ADMIN_CREDENTIALS_FILE, 'r') as f:
@@ -201,7 +204,6 @@ def load_admin_credentials():
     return {"admins": []}
 
 def save_admin_credentials(credentials):
-    """Save admin credentials to file"""
     with open(ADMIN_CREDENTIALS_FILE, 'w') as f:
         json.dump(credentials, f, indent=2)
 
@@ -231,7 +233,6 @@ def verify_admin(username, password):
     return False
 
 def load_config():
-    """Load configuration from file"""
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r') as f:
@@ -244,7 +245,6 @@ def load_config():
         return DEFAULT_CONFIG
 
 def save_config(config):
-    """Save configuration to file"""
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=2)
 
