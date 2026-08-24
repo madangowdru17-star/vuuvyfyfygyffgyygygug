@@ -12,9 +12,11 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 CORS(app)
 
+# File paths for persistent storage on Render
 CONFIG_FILE = 'config.json'
 ADMIN_CREDENTIALS_FILE = 'admin_credentials.json'
 
+# Default configuration
 DEFAULT_CONFIG = {
     "maintenance": False,
     "freefire_maintenance": False,
@@ -189,6 +191,7 @@ DEFAULT_CONFIG = {
 }
 
 def load_admin_credentials():
+    """Load admin credentials from file"""
     if os.path.exists(ADMIN_CREDENTIALS_FILE):
         try:
             with open(ADMIN_CREDENTIALS_FILE, 'r') as f:
@@ -198,6 +201,7 @@ def load_admin_credentials():
     return {"admins": []}
 
 def save_admin_credentials(credentials):
+    """Save admin credentials to file"""
     with open(ADMIN_CREDENTIALS_FILE, 'w') as f:
         json.dump(credentials, f, indent=2)
 
@@ -227,6 +231,7 @@ def verify_admin(username, password):
     return False
 
 def load_config():
+    """Load configuration from file"""
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, 'r') as f:
@@ -239,6 +244,7 @@ def load_config():
         return DEFAULT_CONFIG
 
 def save_config(config):
+    """Save configuration to file"""
     with open(CONFIG_FILE, 'w') as f:
         json.dump(config, f, indent=2)
 
@@ -525,7 +531,6 @@ DASHBOARD_TEMPLATE = '''
         .stat-card h3{color:#718096;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem}
         .stat-card .value{font-size:1.75rem;font-weight:700;color:#1a202c}
         
-        /* Tabs */
         .tabs{display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;background:white;padding:0.5rem;border-radius:12px;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
         .tab-btn{padding:0.7rem 1.5rem;border:none;background:transparent;border-radius:8px;cursor:pointer;font-weight:500;color:#4a5568;transition:all 0.3s;font-size:0.9rem}
         .tab-btn:hover{background:#edf2f7;color:#1a202c}
@@ -604,8 +609,6 @@ DASHBOARD_TEMPLATE = '''
         .toast.error{background:#fc8181}
         @keyframes slideIn{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
         
-        .empty-state{text-align:center;padding:2rem;color:#718096;font-size:0.95rem}
-        
         @media(max-width:768px){.header{flex-direction:column;gap:1rem;align-items:stretch}.header-user{justify-content:space-between}.button-grid{grid-template-columns:1fr}.tabs{flex-direction:column}.tab-btn{width:100%;text-align:center}}
     </style>
 </head>
@@ -626,7 +629,6 @@ DASHBOARD_TEMPLATE = '''
             <div class="stat-card"><h3>Assets</h3><div class="value">{{ config.assets|length }}</div></div>
         </div>
 
-        <!-- Tabs -->
         <div class="tabs">
             <button class="tab-btn active" data-tab="tab-maintenance">Maintenance</button>
             <button class="tab-btn" data-tab="tab-freefire">FreeFire</button>
@@ -636,7 +638,6 @@ DASHBOARD_TEMPLATE = '''
             <button class="tab-btn" data-tab="tab-config">Configuration</button>
         </div>
 
-        <!-- Tab: Maintenance -->
         <div id="tab-maintenance" class="tab-content active">
             <div class="section">
                 <h2>Maintenance Controls</h2>
@@ -666,7 +667,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: FreeFire -->
         <div id="tab-freefire" class="tab-content">
             <div class="section">
                 <h2>FreeFire Buttons</h2>
@@ -703,7 +703,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: FreeFire Max -->
         <div id="tab-freefiremax" class="tab-content">
             <div class="section">
                 <h2>FreeFire Max Buttons</h2>
@@ -740,7 +739,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: Root Libraries -->
         <div id="tab-rootlibs" class="tab-content">
             <div class="section">
                 <h2>Root Libraries</h2>
@@ -778,7 +776,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: Update -->
         <div id="tab-update" class="tab-content">
             <div class="section">
                 <h2>Application Update Controls</h2>
@@ -814,7 +811,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: Configuration -->
         <div id="tab-config" class="tab-content">
             <div class="section">
                 <h2>Configuration Viewer</h2>
@@ -824,7 +820,6 @@ DASHBOARD_TEMPLATE = '''
         </div>
     </div>
 
-    <!-- Edit Modal -->
     <div class="edit-modal" id="editModal">
         <div class="edit-modal-content">
             <h3>Edit Button Configuration</h3>
@@ -841,11 +836,9 @@ DASHBOARD_TEMPLATE = '''
         </div>
     </div>
 
-    <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
 
     <script>
-        // Tab switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -1083,4 +1076,4 @@ DASHBOARD_TEMPLATE = '''
 if __name__ == '__main__':
     create_admin('admin', 'admin123')
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)
