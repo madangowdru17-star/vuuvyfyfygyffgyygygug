@@ -11,8 +11,5 @@
       "src": "/(.*)",
       "dest": "main.py"
     }
-  ],
-  "env": {
-    "SECRET_KEY": "your-super-secret-key-change-this-in-production"
-  }
+  ]
 }
