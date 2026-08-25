@@ -2,7 +2,6 @@
 __pycache__/
 config.json
 admin_credentials.json
-encryption_key.key
 venv/
 .env
 .DS_Store
