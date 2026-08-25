@@ -1,4 +1,3 @@
-# main.py
 from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
 from flask_cors import CORS
 import json
@@ -532,7 +531,6 @@ DASHBOARD_TEMPLATE = '''
         .stat-card h3{color:#718096;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px}
         .stat-card .value{font-size:1.5rem;font-weight:700;color:#1a202c}
         
-        /* Tabs */
         .tabs{display:flex;gap:0.5rem;margin-bottom:2rem;flex-wrap:wrap}
         .tab{background:#edf2f7;border:none;padding:0.75rem 1.5rem;border-radius:8px;cursor:pointer;font-weight:500;color:#4a5568;transition:all 0.2s;font-size:0.9rem}
         .tab:hover{background:#e2e8f0}
@@ -637,7 +635,6 @@ DASHBOARD_TEMPLATE = '''
             <div class="stat-card"><h3>Assets</h3><div class="value">{{ config.assets|length }}</div></div>
         </div>
 
-        <!-- Tabs -->
         <div class="tabs">
             <button class="tab active" data-tab="maintenance">Maintenance</button>
             <button class="tab" data-tab="freefire">FreeFire</button>
@@ -647,7 +644,6 @@ DASHBOARD_TEMPLATE = '''
             <button class="tab" data-tab="settings">Settings</button>
         </div>
 
-        <!-- Tab: Maintenance -->
         <div class="tab-content active" id="tab-maintenance">
             <div class="section">
                 <h2>Global Maintenance Controls</h2>
@@ -668,7 +664,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: FreeFire -->
         <div class="tab-content" id="tab-freefire">
             <div class="section">
                 <h2>FreeFire Buttons</h2>
@@ -709,7 +704,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: FreeFire Max -->
         <div class="tab-content" id="tab-freefire_max">
             <div class="section">
                 <h2>FreeFire Max Buttons</h2>
@@ -750,7 +744,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: Root Libraries -->
         <div class="tab-content" id="tab-root_libs">
             <div class="section">
                 <h2>Root Libraries</h2>
@@ -792,7 +785,6 @@ DASHBOARD_TEMPLATE = '''
             </div>
         </div>
 
-        <!-- Tab: Updates -->
         <div class="tab-content" id="tab-updates">
             <div class="section">
                 <h2>Application Update Controls</h2>
@@ -803,21 +795,20 @@ DASHBOARD_TEMPLATE = '''
                     </button>
                 </div>
                 <div class="flex-col">
-                    <input class="config-input" id="update_version" placeholder="Update Version (e.g. 2.1.0)" value="{{ config.update_version }}">
-                    <input class="config-input" id="update_url" placeholder="Update Download URL" value="{{ config.update_url }}">
+                    <input class="config-input" id="update_version" placeholder="Update Version" value="{{ config.update_version }}">
+                    <input class="config-input" id="update_url" placeholder="Update URL" value="{{ config.update_url }}">
                     <textarea class="config-textarea" id="update_changelog" rows="4" placeholder="Update Changelog">{{ config.update_changelog }}</textarea>
                     <button class="save-btn" onclick="saveUpdateInfo()">Save Update Information</button>
                 </div>
             </div>
         </div>
 
-        <!-- Tab: Settings -->
         <div class="tab-content" id="tab-settings">
             <div class="section">
                 <h2>Master Key Controls</h2>
                 <div class="flex-col">
                     <input class="config-input" id="master_key" placeholder="Master Key" value="{{ config.master_key }}">
-                    <input class="config-input" id="master_key_expiry" placeholder="Expiry Date (e.g. 2026-12-31T23:59:59)" value="{{ config.master_key_expiry }}">
+                    <input class="config-input" id="master_key_expiry" placeholder="Expiry Date" value="{{ config.master_key_expiry }}">
                     <button class="save-btn" onclick="updateMasterKey()">Update Master Key</button>
                 </div>
             </div>
@@ -830,7 +821,6 @@ DASHBOARD_TEMPLATE = '''
         </div>
     </div>
 
-    <!-- Edit Modal -->
     <div class="edit-modal" id="editModal">
         <div class="edit-modal-content">
             <h3>Edit Button Configuration</h3>
@@ -847,11 +837,9 @@ DASHBOARD_TEMPLATE = '''
         </div>
     </div>
 
-    <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
 
     <script>
-        // ============ TABS ============
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', function() {
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -861,7 +849,6 @@ DASHBOARD_TEMPLATE = '''
             });
         });
 
-        // ============ TOAST ============
         function showToast(message, type) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -871,7 +858,6 @@ DASHBOARD_TEMPLATE = '''
             toast._timeout = setTimeout(() => { toast.style.display = 'none'; }, 3000);
         }
 
-        // ============ BUTTON TOGGLE ============
         async function toggleButton(type, id, enabled, maintenance) {
             try {
                 const payload = {};
@@ -895,7 +881,6 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // ============ MAINTENANCE TOGGLE ============
         async function toggleMaintenance(type, current) {
             try {
                 const response = await fetch('/api/maintenance/toggle', {
@@ -915,7 +900,6 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // ============ UPDATE TOGGLE ============
         async function toggleUpdate() {
             try {
                 const current = {{ config.update_available|lower }};
@@ -936,7 +920,6 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // ============ SAVE UPDATE INFO ============
         async function saveUpdateInfo() {
             const version = document.getElementById('update_version').value;
             const url = document.getElementById('update_url').value;
@@ -964,7 +947,6 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // ============ UPDATE MASTER KEY ============
         async function updateMasterKey() {
             const master_key = document.getElementById('master_key').value;
             const master_key_expiry = document.getElementById('master_key_expiry').value;
@@ -990,7 +972,6 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // ============ EDIT MODAL ============
         function openEditModal(type, id, name, url) {
             document.getElementById('edit_type').value = type;
             document.getElementById('edit_id').value = id;
@@ -1028,7 +1009,6 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // ============ REFRESH CONFIG ============
         async function refreshConfig() {
             try {
                 const response = await fetch('/api/config');
@@ -1040,7 +1020,6 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // ============ CLOSE MODAL ON OUTSIDE CLICK ============
         window.onclick = function(event) {
             const modal = document.getElementById('editModal');
             if (event.target == modal) {
@@ -1048,7 +1027,6 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // Auto-refresh config every 30 seconds
         setInterval(refreshConfig, 30000);
     </script>
 </body>
