@@ -12,15 +12,9 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 CORS(app)
 
-# Use Render disk storage for persistent data
-DATA_DIR = '/data' if os.path.exists('/data') else os.getcwd()
-CONFIG_FILE = os.path.join(DATA_DIR, 'config.json')
-ADMIN_CREDENTIALS_FILE = os.path.join(DATA_DIR, 'admin_credentials.json')
+CONFIG_FILE = 'config.json'
+ADMIN_CREDENTIALS_FILE = 'admin_credentials.json'
 
-# Ensure data directory exists
-os.makedirs(DATA_DIR, exist_ok=True)
-
-# Default configuration
 DEFAULT_CONFIG = {
     "maintenance": False,
     "freefire_maintenance": False,
@@ -282,33 +276,29 @@ def toggle_button(button_type, button_id):
         else:
             return jsonify({"success": False, "message": "Invalid button type"}), 400
         
-        updated = False
         for button in buttons:
             if button.get('id') == button_id:
                 if enabled is not None:
                     button['enabled'] = enabled
                 if maintenance is not None:
                     button['maintenance'] = maintenance
-                updated = True
-                break
+                
+                if button_type == 'freefire':
+                    config['freefire_buttons'] = buttons
+                elif button_type == 'freefire_max':
+                    config['freefire_max_buttons'] = buttons
+                elif button_type == 'root_libs':
+                    config['root_libs'] = buttons
+                
+                save_config(config)
+                return jsonify({
+                    "success": True, 
+                    "message": "Button toggled successfully",
+                    "enabled": button['enabled'],
+                    "maintenance": button['maintenance']
+                })
         
-        if not updated:
-            return jsonify({"success": False, "message": "Button not found"}), 404
-        
-        if button_type == 'freefire':
-            config['freefire_buttons'] = buttons
-        elif button_type == 'freefire_max':
-            config['freefire_max_buttons'] = buttons
-        elif button_type == 'root_libs':
-            config['root_libs'] = buttons
-        
-        save_config(config)
-        return jsonify({
-            "success": True, 
-            "message": "Button toggled successfully", 
-            "enabled": enabled, 
-            "maintenance": maintenance
-        })
+        return jsonify({"success": False, "message": "Button not found"}), 404
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
@@ -328,28 +318,24 @@ def update_button(button_type, button_id):
         else:
             return jsonify({"success": False, "message": "Invalid button type"}), 400
         
-        updated = False
         for button in buttons:
             if button.get('id') == button_id:
                 if 'url' in data:
                     button['url'] = data['url']
                 if 'name' in data:
                     button['name'] = data['name']
-                updated = True
-                break
+                
+                if button_type == 'freefire':
+                    config['freefire_buttons'] = buttons
+                elif button_type == 'freefire_max':
+                    config['freefire_max_buttons'] = buttons
+                elif button_type == 'root_libs':
+                    config['root_libs'] = buttons
+                
+                save_config(config)
+                return jsonify({"success": True, "message": "Button updated successfully"})
         
-        if not updated:
-            return jsonify({"success": False, "message": "Button not found"}), 404
-        
-        if button_type == 'freefire':
-            config['freefire_buttons'] = buttons
-        elif button_type == 'freefire_max':
-            config['freefire_max_buttons'] = buttons
-        elif button_type == 'root_libs':
-            config['root_libs'] = buttons
-        
-        save_config(config)
-        return jsonify({"success": True, "message": "Button updated successfully"})
+        return jsonify({"success": False, "message": "Button not found"}), 404
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
 
@@ -402,19 +388,17 @@ def update_asset():
         assets = config.get('assets', [])
         
         if 'name' in data and 'url' in data:
-            updated = False
             for asset in assets:
                 if asset.get('name') == data['name']:
                     asset['url'] = data['url']
-                    updated = True
-                    break
+                    config['assets'] = assets
+                    save_config(config)
+                    return jsonify({"success": True, "message": "Asset updated"})
             
-            if not updated:
-                assets.append({"name": data['name'], "url": data['url']})
-            
+            assets.append({"name": data['name'], "url": data['url']})
             config['assets'] = assets
             save_config(config)
-            return jsonify({"success": True, "message": "Asset updated"})
+            return jsonify({"success": True, "message": "Asset added"})
         
         return jsonify({"success": False, "message": "Missing name or url"}), 400
     except Exception as e:
@@ -543,38 +527,39 @@ DASHBOARD_TEMPLATE = '''
         .logout-btn{padding:0.5rem 1.25rem;background:#e53e3e;color:white;border:none;border-radius:6px;cursor:pointer;text-decoration:none;font-weight:500;transition:background 0.2s}
         .logout-btn:hover{background:#c53030}
         
-        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin-bottom:2rem}
-        .stat-card{background:white;padding:1.5rem;border-radius:12px;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
-        .stat-card h3{color:#718096;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem}
-        .stat-card .value{font-size:1.75rem;font-weight:700;color:#1a202c}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:2rem}
+        .stat-card{background:white;padding:1rem 1.5rem;border-radius:10px;box-shadow:0 2px 4px rgba(0,0,0,0.05);text-align:center}
+        .stat-card h3{color:#718096;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px}
+        .stat-card .value{font-size:1.5rem;font-weight:700;color:#1a202c}
         
-        .tabs{display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;background:white;padding:0.5rem;border-radius:12px;box-shadow:0 2px 4px rgba(0,0,0,0.05)}
-        .tab-btn{padding:0.7rem 1.5rem;border:none;background:transparent;border-radius:8px;cursor:pointer;font-weight:500;color:#4a5568;transition:all 0.3s;font-size:0.9rem}
-        .tab-btn:hover{background:#edf2f7;color:#1a202c}
-        .tab-btn.active{background:#667eea;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3)}
+        /* Tabs */
+        .tabs{display:flex;gap:0.5rem;margin-bottom:2rem;flex-wrap:wrap}
+        .tab{background:#edf2f7;border:none;padding:0.75rem 1.5rem;border-radius:8px;cursor:pointer;font-weight:500;color:#4a5568;transition:all 0.2s;font-size:0.9rem}
+        .tab:hover{background:#e2e8f0}
+        .tab.active{background:#667eea;color:white;box-shadow:0 4px 12px rgba(102,126,234,0.3)}
         .tab-content{display:none}
         .tab-content.active{display:block}
         
         .section{background:white;padding:1.5rem;border-radius:12px;box-shadow:0 2px 4px rgba(0,0,0,0.05);margin-bottom:1.5rem}
         .section h2{color:#1a202c;font-size:1.1rem;margin-bottom:1.25rem;font-weight:600;border-bottom:2px solid #edf2f7;padding-bottom:0.75rem}
         
-        .button-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1rem}
-        .button-card{background:#f7fafc;padding:1rem 1.25rem;border-radius:8px;border-left:4px solid #48bb78;transition:all 0.2s}
+        .button-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem}
+        .button-card{background:#f7fafc;padding:1rem 1.25rem;border-radius:8px;border-left:4px solid #a0aec0;transition:all 0.2s}
         .button-card:hover{background:#edf2f7;transform:translateX(4px)}
-        .button-card .name{font-weight:600;color:#1a202c;margin-bottom:0.25rem;font-size:1rem}
+        .button-card .name{font-weight:600;color:#1a202c;margin-bottom:0.25rem;font-size:0.95rem}
         .button-card .id{font-size:0.7rem;color:#a0aec0;margin-bottom:0.25rem;font-family:monospace}
         .button-card .url{font-size:0.65rem;color:#718096;margin-bottom:0.5rem;word-break:break-all;font-family:monospace;background:#edf2f7;padding:0.2rem 0.5rem;border-radius:4px}
-        .button-card .status{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem}
+        .button-card .info{font-size:0.7rem;color:#718096;margin-bottom:0.5rem}
         
-        .badge{padding:0.15rem 0.6rem;border-radius:12px;font-size:0.7rem;font-weight:600;display:inline-block}
+        .badge{padding:0.15rem 0.6rem;border-radius:12px;font-size:0.65rem;font-weight:600;display:inline-block;margin-right:0.25rem}
         .badge-success{background:#c6f6d5;color:#22543d}
         .badge-danger{background:#fed7d7;color:#742a2a}
         .badge-warning{background:#fefcbf;color:#744210}
         .badge-info{background:#bee3f8;color:#2a4365}
         
-        .control-group{display:flex;gap:0.5rem;flex-wrap:wrap}
-        .btn{padding:0.35rem 0.8rem;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:600;transition:all 0.2s}
-        .btn:hover{transform:scale(1.05);box-shadow:0 2px 8px rgba(0,0,0,0.15)}
+        .control-group{display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:0.5rem}
+        .btn{padding:0.3rem 0.7rem;border:none;border-radius:4px;cursor:pointer;font-size:0.7rem;font-weight:500;transition:all 0.2s}
+        .btn:hover{transform:scale(1.05)}
         .btn-enable{background:#48bb78;color:white}
         .btn-enable:hover{background:#38a169}
         .btn-disable{background:#fc8181;color:white}
@@ -585,12 +570,15 @@ DASHBOARD_TEMPLATE = '''
         .btn-active:hover{background:#3182ce}
         .btn-edit{background:#9f7aea;color:white}
         .btn-edit:hover{background:#805ad5}
+        .btn-small{padding:0.2rem 0.5rem;font-size:0.65rem}
         
         .maintenance-toggle{background:#edf2f7;border:2px solid #e2e8f0;padding:0.5rem 1rem;border-radius:6px;cursor:pointer;font-weight:500;color:#2d3748;transition:all 0.2s}
         .maintenance-toggle:hover{background:#e2e8f0}
         
         .config-input{width:100%;padding:0.7rem;border:2px solid #e2e8f0;border-radius:6px;margin-top:0.5rem;font-size:0.9rem;background:#f7fafc;transition:all 0.2s}
         .config-input:focus{outline:none;border-color:#667eea;background:white}
+        .config-textarea{width:100%;padding:0.7rem;border:2px solid #e2e8f0;border-radius:6px;margin-top:0.5rem;font-size:0.9rem;background:#f7fafc;transition:all 0.2s;font-family:monospace;resize:vertical;min-height:60px}
+        .config-textarea:focus{outline:none;border-color:#667eea;background:white}
         
         .save-btn{background:#667eea;color:white;border:none;padding:0.5rem 1.5rem;border-radius:6px;cursor:pointer;font-weight:500;margin-top:0.5rem;transition:all 0.2s}
         .save-btn:hover{background:#5a67d8;transform:translateY(-1px);box-shadow:0 4px 12px rgba(102,126,234,0.3)}
@@ -621,12 +609,15 @@ DASHBOARD_TEMPLATE = '''
         .edit-modal-content .modal-actions .cancel{background:#fc8181;color:white}
         .edit-modal-content .modal-actions .cancel:hover{background:#f56565}
         
-        .toast{position:fixed;bottom:20px;right:20px;background:#1a202c;color:white;padding:0.75rem 1.5rem;border-radius:8px;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,0.2);display:none;animation:slideIn 0.3s ease}
+        .toast{position:fixed;bottom:20px;right:20px;background:#1a202c;color:white;padding:0.75rem 1.5rem;border-radius:8px;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,0.2);display:none;animation:slideIn 0.3s ease;max-width:400px}
         .toast.success{background:#48bb78}
         .toast.error{background:#fc8181}
         @keyframes slideIn{from{transform:translateY(100px);opacity:0}to{transform:translateY(0);opacity:1}}
         
-        @media(max-width:768px){.header{flex-direction:column;gap:1rem;align-items:stretch}.header-user{justify-content:space-between}.button-grid{grid-template-columns:1fr}.tabs{flex-direction:column}.tab-btn{width:100%;text-align:center}}
+        .empty-state{text-align:center;padding:2rem;color:#a0aec0}
+        .status-label{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+        
+        @media(max-width:768px){.header{flex-direction:column;gap:1rem;align-items:stretch}.header-user{justify-content:space-between}.button-grid{grid-template-columns:1fr}}
     </style>
 </head>
 <body>
@@ -640,24 +631,26 @@ DASHBOARD_TEMPLATE = '''
         </div>
 
         <div class="stats-grid">
-            <div class="stat-card"><h3>FreeFire Buttons</h3><div class="value">{{ config.freefire_buttons|length }}</div></div>
-            <div class="stat-card"><h3>FreeFire Max Buttons</h3><div class="value">{{ config.freefire_max_buttons|length }}</div></div>
+            <div class="stat-card"><h3>FreeFire</h3><div class="value">{{ config.freefire_buttons|length }}</div></div>
+            <div class="stat-card"><h3>FreeFire Max</h3><div class="value">{{ config.freefire_max_buttons|length }}</div></div>
             <div class="stat-card"><h3>Root Libraries</h3><div class="value">{{ config.root_libs|length }}</div></div>
             <div class="stat-card"><h3>Assets</h3><div class="value">{{ config.assets|length }}</div></div>
         </div>
 
+        <!-- Tabs -->
         <div class="tabs">
-            <button class="tab-btn active" data-tab="tab-maintenance">Maintenance</button>
-            <button class="tab-btn" data-tab="tab-freefire">FreeFire</button>
-            <button class="tab-btn" data-tab="tab-freefiremax">FreeFire Max</button>
-            <button class="tab-btn" data-tab="tab-rootlibs">Root Libraries</button>
-            <button class="tab-btn" data-tab="tab-update">Update</button>
-            <button class="tab-btn" data-tab="tab-config">Configuration</button>
+            <button class="tab active" data-tab="maintenance">Maintenance</button>
+            <button class="tab" data-tab="freefire">FreeFire</button>
+            <button class="tab" data-tab="freefire_max">FreeFire Max</button>
+            <button class="tab" data-tab="root_libs">Root Libraries</button>
+            <button class="tab" data-tab="updates">Updates</button>
+            <button class="tab" data-tab="settings">Settings</button>
         </div>
 
-        <div id="tab-maintenance" class="tab-content active">
+        <!-- Tab: Maintenance -->
+        <div class="tab-content active" id="tab-maintenance">
             <div class="section">
-                <h2>Maintenance Controls</h2>
+                <h2>Global Maintenance Controls</h2>
                 <div class="flex-row">
                     <button class="maintenance-toggle" onclick="toggleMaintenance('maintenance', {{ config.maintenance|lower }})">
                         <span class="status-dot {{ 'online' if not config.maintenance else 'maintenance' }}"></span>
@@ -673,27 +666,20 @@ DASHBOARD_TEMPLATE = '''
                     </button>
                 </div>
             </div>
-
-            <div class="section">
-                <h2>Master Key Controls</h2>
-                <div class="flex-col">
-                    <input class="config-input" id="master_key" placeholder="Master Key" value="{{ config.master_key }}">
-                    <input class="config-input" id="master_key_expiry" placeholder="Expiry Date" value="{{ config.master_key_expiry }}">
-                    <button class="save-btn" onclick="updateMasterKey()">Update Master Key</button>
-                </div>
-            </div>
         </div>
 
-        <div id="tab-freefire" class="tab-content">
+        <!-- Tab: FreeFire -->
+        <div class="tab-content" id="tab-freefire">
             <div class="section">
                 <h2>FreeFire Buttons</h2>
+                {% if config.freefire_buttons %}
                 <div class="button-grid">
                     {% for button in config.freefire_buttons %}
                     <div class="button-card" style="border-left-color: {{ '#48bb78' if button.enabled else '#fc8181' }}">
                         <div class="name">{{ button.name }}</div>
                         <div class="id">ID: {{ button.id }}</div>
                         <div class="url">URL: {{ button.url }}</div>
-                        <div class="status">
+                        <div class="status-label">
                             <span class="badge {{ 'badge-success' if button.enabled else 'badge-danger' }}">
                                 <span class="status-dot {{ 'active' if button.enabled else 'inactive' }}"></span>
                                 {{ 'Enabled' if button.enabled else 'Disabled' }}
@@ -705,31 +691,36 @@ DASHBOARD_TEMPLATE = '''
                         </div>
                         <div class="control-group">
                             <button class="btn {{ 'btn-enable' if not button.enabled else 'btn-disable' }}" 
-                                    onclick="toggleButton('freefire', '{{ button.id }}', {{ not button.enabled|lower }}, {{ button.maintenance|lower }})">
+                                    onclick="toggleButton('freefire', '{{ button.id }}', {{ not button.enabled|lower }}, null)">
                                 {{ 'Enable' if not button.enabled else 'Disable' }}
                             </button>
                             <button class="btn {{ 'btn-active' if button.maintenance else 'btn-maintenance' }}"
-                                    onclick="toggleMaintenanceButton('freefire', '{{ button.id }}', {{ not button.maintenance|lower }}, {{ button.enabled|lower }})">
+                                    onclick="toggleButton('freefire', '{{ button.id }}', null, {{ not button.maintenance|lower }})">
                                 {{ 'Set Active' if button.maintenance else 'Set Maintenance' }}
                             </button>
-                            <button class="btn btn-edit" onclick="openEditModal('freefire', '{{ button.id }}', '{{ button.name }}', '{{ button.url }}')">Edit</button>
+                            <button class="btn btn-edit btn-small" onclick="openEditModal('freefire', '{{ button.id }}', '{{ button.name }}', '{{ button.url }}')">Edit</button>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
+                {% else %}
+                <div class="empty-state">No FreeFire buttons configured</div>
+                {% endif %}
             </div>
         </div>
 
-        <div id="tab-freefiremax" class="tab-content">
+        <!-- Tab: FreeFire Max -->
+        <div class="tab-content" id="tab-freefire_max">
             <div class="section">
                 <h2>FreeFire Max Buttons</h2>
+                {% if config.freefire_max_buttons %}
                 <div class="button-grid">
                     {% for button in config.freefire_max_buttons %}
                     <div class="button-card" style="border-left-color: {{ '#48bb78' if button.enabled else '#fc8181' }}">
                         <div class="name">{{ button.name }}</div>
                         <div class="id">ID: {{ button.id }}</div>
                         <div class="url">URL: {{ button.url }}</div>
-                        <div class="status">
+                        <div class="status-label">
                             <span class="badge {{ 'badge-success' if button.enabled else 'badge-danger' }}">
                                 <span class="status-dot {{ 'active' if button.enabled else 'inactive' }}"></span>
                                 {{ 'Enabled' if button.enabled else 'Disabled' }}
@@ -741,32 +732,37 @@ DASHBOARD_TEMPLATE = '''
                         </div>
                         <div class="control-group">
                             <button class="btn {{ 'btn-enable' if not button.enabled else 'btn-disable' }}" 
-                                    onclick="toggleButton('freefire_max', '{{ button.id }}', {{ not button.enabled|lower }}, {{ button.maintenance|lower }})">
+                                    onclick="toggleButton('freefire_max', '{{ button.id }}', {{ not button.enabled|lower }}, null)">
                                 {{ 'Enable' if not button.enabled else 'Disable' }}
                             </button>
                             <button class="btn {{ 'btn-active' if button.maintenance else 'btn-maintenance' }}"
-                                    onclick="toggleMaintenanceButton('freefire_max', '{{ button.id }}', {{ not button.maintenance|lower }}, {{ button.enabled|lower }})">
+                                    onclick="toggleButton('freefire_max', '{{ button.id }}', null, {{ not button.maintenance|lower }})">
                                 {{ 'Set Active' if button.maintenance else 'Set Maintenance' }}
                             </button>
-                            <button class="btn btn-edit" onclick="openEditModal('freefire_max', '{{ button.id }}', '{{ button.name }}', '{{ button.url }}')">Edit</button>
+                            <button class="btn btn-edit btn-small" onclick="openEditModal('freefire_max', '{{ button.id }}', '{{ button.name }}', '{{ button.url }}')">Edit</button>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
+                {% else %}
+                <div class="empty-state">No FreeFire Max buttons configured</div>
+                {% endif %}
             </div>
         </div>
 
-        <div id="tab-rootlibs" class="tab-content">
+        <!-- Tab: Root Libraries -->
+        <div class="tab-content" id="tab-root_libs">
             <div class="section">
                 <h2>Root Libraries</h2>
+                {% if config.root_libs %}
                 <div class="button-grid">
                     {% for lib in config.root_libs %}
                     <div class="button-card" style="border-left-color: {{ '#48bb78' if lib.enabled else '#fc8181' }}">
                         <div class="name">{{ lib.name }}</div>
                         <div class="id">ID: {{ lib.id }}</div>
                         <div class="url">URL: {{ lib.url }}</div>
-                        <div style="font-size:0.7rem;color:#718096;margin-bottom:0.5rem">Path: {{ lib.lib_path }} | Arch: {{ lib.arch }}</div>
-                        <div class="status">
+                        <div class="info">Path: {{ lib.lib_path }} | Arch: {{ lib.arch }}</div>
+                        <div class="status-label">
                             <span class="badge {{ 'badge-success' if lib.enabled else 'badge-danger' }}">
                                 <span class="status-dot {{ 'active' if lib.enabled else 'inactive' }}"></span>
                                 {{ 'Enabled' if lib.enabled else 'Disabled' }}
@@ -778,22 +774,26 @@ DASHBOARD_TEMPLATE = '''
                         </div>
                         <div class="control-group">
                             <button class="btn {{ 'btn-enable' if not lib.enabled else 'btn-disable' }}" 
-                                    onclick="toggleButton('root_libs', '{{ lib.id }}', {{ not lib.enabled|lower }}, {{ lib.maintenance|lower }})">
+                                    onclick="toggleButton('root_libs', '{{ lib.id }}', {{ not lib.enabled|lower }}, null)">
                                 {{ 'Enable' if not lib.enabled else 'Disable' }}
                             </button>
                             <button class="btn {{ 'btn-active' if lib.maintenance else 'btn-maintenance' }}"
-                                    onclick="toggleMaintenanceButton('root_libs', '{{ lib.id }}', {{ not lib.maintenance|lower }}, {{ lib.enabled|lower }})">
+                                    onclick="toggleButton('root_libs', '{{ lib.id }}', null, {{ not lib.maintenance|lower }})">
                                 {{ 'Set Active' if lib.maintenance else 'Set Maintenance' }}
                             </button>
-                            <button class="btn btn-edit" onclick="openEditModal('root_libs', '{{ lib.id }}', '{{ lib.name }}', '{{ lib.url }}')">Edit</button>
+                            <button class="btn btn-edit btn-small" onclick="openEditModal('root_libs', '{{ lib.id }}', '{{ lib.name }}', '{{ lib.url }}')">Edit</button>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
+                {% else %}
+                <div class="empty-state">No root libraries configured</div>
+                {% endif %}
             </div>
         </div>
 
-        <div id="tab-update" class="tab-content">
+        <!-- Tab: Updates -->
+        <div class="tab-content" id="tab-updates">
             <div class="section">
                 <h2>Application Update Controls</h2>
                 <div class="flex-row" style="margin-bottom:1rem">
@@ -803,32 +803,25 @@ DASHBOARD_TEMPLATE = '''
                     </button>
                 </div>
                 <div class="flex-col">
-                    <input class="config-input" id="update_version" placeholder="Update Version" value="{{ config.update_version }}">
-                    <input class="config-input" id="update_url" placeholder="Update URL" value="{{ config.update_url }}">
-                    <textarea class="config-input" id="update_changelog" rows="3" placeholder="Update Changelog">{{ config.update_changelog }}</textarea>
+                    <input class="config-input" id="update_version" placeholder="Update Version (e.g. 2.1.0)" value="{{ config.update_version }}">
+                    <input class="config-input" id="update_url" placeholder="Update Download URL" value="{{ config.update_url }}">
+                    <textarea class="config-textarea" id="update_changelog" rows="4" placeholder="Update Changelog">{{ config.update_changelog }}</textarea>
                     <button class="save-btn" onclick="saveUpdateInfo()">Save Update Information</button>
-                </div>
-            </div>
-
-            <div class="section">
-                <h2>Asset Management</h2>
-                <div class="flex-col">
-                    <input class="config-input" id="asset_name" placeholder="Asset Name (e.g. bg.mp4)">
-                    <input class="config-input" id="asset_url" placeholder="Asset URL">
-                    <button class="save-btn" onclick="updateAsset()">Update or Add Asset</button>
-                </div>
-                <div style="margin-top:1rem">
-                    <h3 style="font-size:0.9rem;color:#4a5568;margin-bottom:0.5rem">Current Assets:</h3>
-                    {% for asset in config.assets %}
-                    <div style="background:#f7fafc;padding:0.5rem;border-radius:4px;margin-bottom:0.25rem;font-size:0.8rem">
-                        <strong>{{ asset.name }}</strong>: {{ asset.url }}
-                    </div>
-                    {% endfor %}
                 </div>
             </div>
         </div>
 
-        <div id="tab-config" class="tab-content">
+        <!-- Tab: Settings -->
+        <div class="tab-content" id="tab-settings">
+            <div class="section">
+                <h2>Master Key Controls</h2>
+                <div class="flex-col">
+                    <input class="config-input" id="master_key" placeholder="Master Key" value="{{ config.master_key }}">
+                    <input class="config-input" id="master_key_expiry" placeholder="Expiry Date (e.g. 2026-12-31T23:59:59)" value="{{ config.master_key_expiry }}">
+                    <button class="save-btn" onclick="updateMasterKey()">Update Master Key</button>
+                </div>
+            </div>
+
             <div class="section">
                 <h2>Configuration Viewer</h2>
                 <button class="refresh-btn" onclick="refreshConfig()">Refresh Configuration</button>
@@ -837,6 +830,7 @@ DASHBOARD_TEMPLATE = '''
         </div>
     </div>
 
+    <!-- Edit Modal -->
     <div class="edit-modal" id="editModal">
         <div class="edit-modal-content">
             <h3>Edit Button Configuration</h3>
@@ -853,39 +847,46 @@ DASHBOARD_TEMPLATE = '''
         </div>
     </div>
 
+    <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
 
     <script>
-        // Tab switching
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        // ============ TABS ============
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
-                document.getElementById(this.dataset.tab).classList.add('active');
+                document.getElementById('tab-' + this.dataset.tab).classList.add('active');
             });
         });
 
+        // ============ TOAST ============
         function showToast(message, type) {
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = 'toast ' + type;
             toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 3000);
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => { toast.style.display = 'none'; }, 3000);
         }
 
-        // Toggle Button Enable/Disable
+        // ============ BUTTON TOGGLE ============
         async function toggleButton(type, id, enabled, maintenance) {
             try {
+                const payload = {};
+                if (enabled !== null) payload.enabled = enabled;
+                if (maintenance !== null) payload.maintenance = maintenance;
+                
                 const response = await fetch(`/api/button/toggle/${type}/${id}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({enabled: enabled, maintenance: maintenance})
+                    body: JSON.stringify(payload)
                 });
                 const data = await response.json();
                 if (data.success) {
-                    showToast('Button toggled successfully', 'success');
-                    setTimeout(() => location.reload(), 500);
+                    showToast('Button updated successfully', 'success');
+                    setTimeout(() => location.reload(), 600);
                 } else {
                     showToast('Error: ' + data.message, 'error');
                 }
@@ -894,27 +895,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // Toggle Maintenance Mode for Button
-        async function toggleMaintenanceButton(type, id, maintenance, enabled) {
-            try {
-                const response = await fetch(`/api/button/toggle/${type}/${id}`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({enabled: enabled, maintenance: maintenance})
-                });
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Maintenance status updated', 'success');
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    showToast('Error: ' + data.message, 'error');
-                }
-            } catch (error) {
-                showToast('Error: ' + error.message, 'error');
-            }
-        }
-
-        // Toggle Global Maintenance
+        // ============ MAINTENANCE TOGGLE ============
         async function toggleMaintenance(type, current) {
             try {
                 const response = await fetch('/api/maintenance/toggle', {
@@ -925,7 +906,7 @@ DASHBOARD_TEMPLATE = '''
                 const data = await response.json();
                 if (data.success) {
                     showToast('Maintenance status updated', 'success');
-                    setTimeout(() => location.reload(), 500);
+                    setTimeout(() => location.reload(), 600);
                 } else {
                     showToast('Error: ' + data.message, 'error');
                 }
@@ -934,7 +915,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // Toggle Update Availability
+        // ============ UPDATE TOGGLE ============
         async function toggleUpdate() {
             try {
                 const current = {{ config.update_available|lower }};
@@ -946,7 +927,7 @@ DASHBOARD_TEMPLATE = '''
                 const data = await response.json();
                 if (data.success) {
                     showToast('Update status toggled', 'success');
-                    setTimeout(() => location.reload(), 500);
+                    setTimeout(() => location.reload(), 600);
                 } else {
                     showToast('Error: ' + data.message, 'error');
                 }
@@ -955,7 +936,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // Save Update Info
+        // ============ SAVE UPDATE INFO ============
         async function saveUpdateInfo() {
             const version = document.getElementById('update_version').value;
             const url = document.getElementById('update_url').value;
@@ -974,7 +955,7 @@ DASHBOARD_TEMPLATE = '''
                 const data = await response.json();
                 if (data.success) {
                     showToast('Update information saved', 'success');
-                    setTimeout(() => location.reload(), 500);
+                    setTimeout(() => location.reload(), 600);
                 } else {
                     showToast('Error: ' + data.message, 'error');
                 }
@@ -983,7 +964,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // Update Master Key
+        // ============ UPDATE MASTER KEY ============
         async function updateMasterKey() {
             const master_key = document.getElementById('master_key').value;
             const master_key_expiry = document.getElementById('master_key_expiry').value;
@@ -1000,7 +981,7 @@ DASHBOARD_TEMPLATE = '''
                 const data = await response.json();
                 if (data.success) {
                     showToast('Master key updated', 'success');
-                    setTimeout(() => location.reload(), 500);
+                    setTimeout(() => location.reload(), 600);
                 } else {
                     showToast('Error: ' + data.message, 'error');
                 }
@@ -1009,49 +990,19 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // Update Asset
-        async function updateAsset() {
-            const name = document.getElementById('asset_name').value;
-            const url = document.getElementById('asset_url').value;
-            
-            if (!name || !url) {
-                showToast('Please enter both name and URL', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/asset/update', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({name: name, url: url})
-                });
-                const data = await response.json();
-                if (data.success) {
-                    showToast('Asset updated successfully', 'success');
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    showToast('Error: ' + data.message, 'error');
-                }
-            } catch (error) {
-                showToast('Error: ' + error.message, 'error');
-            }
-        }
-
-        // Open Edit Modal
+        // ============ EDIT MODAL ============
         function openEditModal(type, id, name, url) {
             document.getElementById('edit_type').value = type;
             document.getElementById('edit_id').value = id;
             document.getElementById('edit_name').value = name;
-            document.getElementById('edit_url').value = url;
+            document.getElementById('edit_url').value = url || '';
             document.getElementById('editModal').style.display = 'flex';
         }
 
-        // Close Edit Modal
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
         }
 
-        // Save Edit
         async function saveEdit() {
             const type = document.getElementById('edit_type').value;
             const id = document.getElementById('edit_id').value;
@@ -1068,7 +1019,7 @@ DASHBOARD_TEMPLATE = '''
                 if (data.success) {
                     showToast('Button updated successfully', 'success');
                     closeEditModal();
-                    setTimeout(() => location.reload(), 500);
+                    setTimeout(() => location.reload(), 600);
                 } else {
                     showToast('Error: ' + data.message, 'error');
                 }
@@ -1077,7 +1028,7 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // Refresh Config
+        // ============ REFRESH CONFIG ============
         async function refreshConfig() {
             try {
                 const response = await fetch('/api/config');
@@ -1089,16 +1040,16 @@ DASHBOARD_TEMPLATE = '''
             }
         }
 
-        // Auto-refresh every 30 seconds
-        setInterval(refreshConfig, 30000);
-
-        // Close modal on outside click
+        // ============ CLOSE MODAL ON OUTSIDE CLICK ============
         window.onclick = function(event) {
             const modal = document.getElementById('editModal');
             if (event.target == modal) {
                 closeEditModal();
             }
         }
+
+        // Auto-refresh config every 30 seconds
+        setInterval(refreshConfig, 30000);
     </script>
 </body>
 </html>
